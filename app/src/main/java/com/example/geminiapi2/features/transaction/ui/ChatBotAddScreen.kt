@@ -1,0 +1,224 @@
+package com.example.geminiapi2.features.transaction.ui
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
+import androidx.compose.material.icons.Icons
+
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Send
+
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults.topAppBarColors
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.sp
+import com.example.geminiapi2.GeminiTextViewModel
+import com.example.geminiapi2.data.dto.Message
+import com.example.geminiapi2.features.transaction.viewmodel.AddTransactionState
+import com.example.geminiapi2.features.transaction.viewmodel.ChatBotViewModel
+
+@Composable
+@OptIn(ExperimentalMaterial3Api::class)
+fun ChatbotAddScreen(
+    onNavigateBack: () -> Unit,
+    geminiviewModel: GeminiTextViewModel = hiltViewModel(),
+    chatbotViewmodel: ChatBotViewModel = hiltViewModel()
+){
+    var messageText by remember { mutableStateOf("") }
+//    val uiState by geminiviewModel.uiState.collectAsState()
+    val listState = rememberLazyListState()
+    val messages by chatbotViewmodel.messages.collectAsState()
+    val sendStatus by chatbotViewmodel.sendStatus.collectAsState()
+    Scaffold(
+
+        topBar = {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(WindowInsets.statusBars.asPaddingValues().calculateTopPadding())
+                    .background(Color.LightGray.copy(alpha = 01f))
+            )
+            TopAppBar(
+
+                title = { Text("Add new transactions") },
+                scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(),
+
+//                colors = topAppBarColors(
+//                    containerColor = MaterialTheme.colorScheme.primary,
+//                    titleContentColor = MaterialTheme.colorScheme.onPrimary
+////                    containerColor = Color(0xFF343541),
+////                    titleContentColor = Color.White
+//                ),
+                colors = topAppBarColors(
+                    containerColor = Color.Transparent
+                ),
+                navigationIcon = {
+                    IconButton(onClick = onNavigateBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
+                    }
+                },
+                actions = { Spacer(modifier = Modifier.width(48.dp)) }
+
+            )
+        },
+//        contentWindowInsets = WindowInsets(0, 0, 0, 0),
+    ) { padding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+
+        ) {
+            // Chat messages area
+            LaunchedEffect(messages.size) {
+                if (messages.isNotEmpty()) {
+                    listState.animateScrollToItem(0)
+                }
+            }
+            LazyColumn(
+                state = listState,
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(horizontal = 8.dp)
+                    .fillMaxWidth(),
+                contentPadding = PaddingValues( bottom = 3.dp),
+                reverseLayout = true
+
+            ) {
+                items(messages) { message ->
+                    ChatMessageItem(message)
+                }
+            }
+            // Input area
+            Row(
+                modifier = Modifier
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+//                OutlinedTextField(
+//                    value = messageText,
+//                    onValueChange = { messageText = it },
+//                    modifier = Modifier.weight(1f),
+//                    placeholder = { Text("Add transactions example: Breakfast 20k...") }
+//                )
+                TextField(
+                    value = messageText,
+                    onValueChange = {
+                        if (it.length <= 120) {
+                            messageText = it
+                        }
+//                        messageText = it
+                    },
+                    colors = TextFieldDefaults.colors(
+                        unfocusedContainerColor = Color(0xFFF0F0F0),  // Màu nền xám nhạt
+                        focusedContainerColor = Color(0xFFF0F0F0),
+                        unfocusedTextColor = Color.Black,
+                        focusedTextColor = Color.Black,
+                        focusedIndicatorColor = Color.Transparent,  // Ẩn đường viền khi focus
+                        unfocusedIndicatorColor = Color.Transparent,
+                    ),
+
+
+                    label = null,
+                    placeholder = { Text("Add transactions ...") },
+                    shape = RoundedCornerShape(25.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(end = 8.dp)
+                        .weight(1f)
+                )
+
+                Button(
+                    onClick = {
+                        if (messageText.isNotBlank()) {
+                            chatbotViewmodel.sendAddTransactionMessage(messageText)
+                            messageText = ""
+                        }
+                    },
+                    enabled = messageText.isNotBlank() && sendStatus != AddTransactionState.Loading,
+                    shape = CircleShape,
+                    contentPadding = PaddingValues(0.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary
+                    ),
+                    modifier = Modifier.size(48.dp)
+                ) {
+                    if (sendStatus == AddTransactionState.Loading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(24.dp),
+                            color = MaterialTheme.colorScheme.onPrimary,
+                            strokeWidth = 2.dp
+                        )
+                    }else{
+                    Icon(
+                        Icons.AutoMirrored.Filled.Send,
+                        contentDescription = "Send",
+                        tint = MaterialTheme.colorScheme.onPrimary
+                    )
+                    }
+                }
+            }
+            Text(
+                text = "AI may make mistakes",
+                style = MaterialTheme.typography.bodySmall,
+                textAlign = TextAlign.Center,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontSize = 10.sp,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(0.dp,10.dp,0.dp,25.dp)
+
+            )
+        }
+    }
+}
+
+@Composable
+fun ChatMessageItem(message: Message) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 5.dp),
+        horizontalArrangement = if (message.isFromUser) Arrangement.End else Arrangement.Start
+    ) {
+        Box(
+            modifier = Modifier
+                .background(
+                    if (message.isFromUser) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+                    shape = RoundedCornerShape(16.dp)
+                )
+                .padding(2.dp)
+
+                .widthIn(max = 300.dp)
+        ) {
+            Text(
+                text = message.text,
+                color = if (message.isFromUser) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Justify,
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 12.dp)
+            )
+        }
+    }
+}

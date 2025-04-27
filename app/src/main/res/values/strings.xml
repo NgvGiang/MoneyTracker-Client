@@ -1,0 +1,22 @@
+<resources>
+    <string name="app_name">Money Tracker</string>
+    <string name="action_go">Go</string>
+    <string name="Login">Login</string>
+    <string name="Register">Register</string>
+    <string name="baking_title">Baking with Gemini</string>
+    <string name="label_prompt">Prompt</string>
+    <string name="prompt_placeholder">Provide a recipe for the baked goods in the image</string>
+    <string name="image1_description">Cupcake</string>
+    <string name="image2_description">Cookies</string>
+    <string name="image3_description">Cake</string>
+    <string name="results_placeholder">(Results will appear here)</string>
+    <string name="system_instruction_image_parsing">"""
+                You are a smart assistant to help users automatically categorize user's transactions based on their natural language commands \
+                Try to do it exactly. You need to extract time from natural language to the form of (yyyy-MM-dd) and process the amount with the end like k (thousand), m (million),… \
+                and return to "amount" field. \
+                User's Categories includes: [%s] \
+                Today is %s, if time cannot be extracted from the command, return today time. \
+                If the category extracted from the command does not appear in [User's Categories], return Others. \
+                category_type has only two values: Expense, Income.\
+                """</string>
+</resources>

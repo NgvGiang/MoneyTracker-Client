@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "554116334948",
+    "project_id": "moneytracker-c2184",
+    "storage_bucket": "moneytracker-c2184.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:554116334948:android:60dfddaed716a636d6e671",
+        "android_client_info": {
+          "package_name": "com.example.geminiapi2"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDVj-v0oevlivyvs9qSnXr4B465Gy0iYOM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
