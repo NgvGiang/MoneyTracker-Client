@@ -3,32 +3,38 @@ package com.example.geminiapi2.features.navigation
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
+
 import com.example.geminiapi2.features.transaction.ui.ChatbotAddScreen
 import com.example.geminiapi2.features.home.HomeScreen
 import com.example.geminiapi2.features.login.LoginScreen
 import com.example.geminiapi2.features.login.RegisterScreen
 import com.example.geminiapi2.features.settings.SettingsScreen
+import com.example.geminiapi2.features.transaction.viewmodel.TransactionViewModel
+import com.example.geminiapi2.features.wallet.ui.WalletDetailScreen
+import com.example.geminiapi2.features.transaction.ui.WalletRequestsScreen
 
 
 @Composable
 fun AppNavigation() {
     val navController = rememberNavController()
+    val transactionViewModel: TransactionViewModel = hiltViewModel()
 
     NavHost(
         navController = navController,
         startDestination = Screen.Login.route,
-
-        ) {
+    ) {
         composable(Screen.Login.route) {
             LoginScreen(
                 onNavigateToRegister = {
                     navController.navigate(Screen.Register.route)
                 },
                 onLoginSuccess = {
-                    // Navigate to Home and remove all previous screens
                     navController.navigate(Screen.Home.route) {
                         popUpTo(Screen.Login.route) { inclusive = true }
                     }
@@ -42,7 +48,6 @@ fun AppNavigation() {
                     navController.popBackStack()
                 },
                 onRegisterSuccess = {
-                    // Navigate to Home and remove all previous screens
                     navController.navigate(Screen.Home.route) {
                         popUpTo(Screen.Login.route) { inclusive = true }
                     }
@@ -50,7 +55,10 @@ fun AppNavigation() {
             )
         }
         composable(Screen.Home.route) {
-            HomeScreen(appNavController = navController)
+            HomeScreen(
+                appNavController = navController,
+                transactionViewModel = transactionViewModel
+            )
         }
         composable(Screen.ChatBotAdd.route,
             enterTransition = {
@@ -69,8 +77,16 @@ fun AppNavigation() {
             ChatbotAddScreen(
                 onNavigateBack = {
                     navController.popBackStack()
-                }
+                },
+                transactionViewModel = transactionViewModel
             )
+        }
+        
+        composable(
+            route = Screen.WalletDetail.route,
+            arguments = listOf(navArgument("walletId") { type = NavType.IntType })
+        ) {
+             WalletDetailScreen(navController = navController)
         }
         
         composable(Screen.Settings.route,
@@ -94,6 +110,10 @@ fun AppNavigation() {
                     }
                 }
             )
+        }
+
+        composable(Screen.WalletRequests.route) {
+            WalletRequestsScreen(navController = navController)
         }
     }
 }

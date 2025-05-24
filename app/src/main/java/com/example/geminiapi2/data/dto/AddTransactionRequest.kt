@@ -1,5 +1,6 @@
 package com.example.geminiapi2.data.dto
 
 data class AddTransactionRequest (
-    val prompt: String
+    val prompt: String,
+    val walletId: Int
 )

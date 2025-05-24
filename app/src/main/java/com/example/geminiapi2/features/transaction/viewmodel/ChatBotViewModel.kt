@@ -6,6 +6,7 @@ import com.example.geminiapi2.data.ApiService
 import com.example.geminiapi2.data.dto.AddTransactionRequest
 import com.example.geminiapi2.data.dto.AddTransactionResponse
 import com.example.geminiapi2.data.dto.Message
+import com.example.geminiapi2.data.dto.TransactionInfo
 import com.example.geminiapi2.features.login.TokenManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -26,7 +27,7 @@ class ChatBotViewModel @Inject constructor(
 
     private val _sendStatus = MutableStateFlow<AddTransactionState>(AddTransactionState.Idle)
     val sendStatus: StateFlow<AddTransactionState> = _sendStatus.asStateFlow()
-    fun sendAddTransactionMessage(prompt: String){
+    fun sendAddTransactionMessage(prompt: String, walletId: Int ){
         _messages.update { currentMessages->
             currentMessages.toMutableList().apply {
                 add(0,Message(prompt, isFromUser =  true))
@@ -35,15 +36,11 @@ class ChatBotViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 _sendStatus.value = AddTransactionState.Loading
-                val response = apiService.addTransaction(AddTransactionRequest(prompt))
+                val response = apiService.addTransaction(AddTransactionRequest(prompt, walletId))
                 if (response.isSuccessful) {
                     _sendStatus.value = AddTransactionState.Success
                     response.body()?.let { addTransactionResponse ->
-                        _messages.update { currentMessages ->
-                            currentMessages.toMutableList().apply {
-                                add(0, Message(formatBotResponse(addTransactionResponse), isFromUser = false))
-                            }
-                        }
+                        sendBotResponse(addTransactionResponse)
                     } ?: run {
                         _messages.update{ currentMessages ->
                             currentMessages.toMutableList().apply {
@@ -70,27 +67,37 @@ class ChatBotViewModel @Inject constructor(
     }
 
     private fun formatBotResponse(response: AddTransactionResponse): String {
-
-//        return """
-//           Category: ${response.category}
-//           Date: ${response.date}
-//           Amount: ${response.amount}
-//           Category Type: ${response.category_type}
-//           ${response.comment}
-//       """.trimIndent()
-        var responseFormatted= ""
-        if (response.category.isNotEmpty()){
-            responseFormatted = """
-           Category: ${response.category}
-           Date: ${response.date}
-           Amount: ${response.amount}
-           Category Type: ${response.category_type}
-           ${response.comment}
-       """.trimIndent()
-        }else{
-            responseFormatted = response.comment
+        // Nếu có thông tin giao dịch, trả về comment
+        if (response.category.isNotEmpty()) {
+            return response.comment
+        } else {
+            return response.comment
         }
-        return responseFormatted
+    }
+
+    private fun sendBotResponse(response: AddTransactionResponse) {
+        if (response.category.isNotEmpty()) {
+            // Nếu có thông tin giao dịch, tạo message với TransactionInfo
+            val transactionInfo = TransactionInfo(
+                category = response.category,
+                date = response.date,
+                amount = response.amount,
+                categoryType = response.categoryType,
+                comment = response.comment
+            )
+            _messages.update { currentMessages ->
+                currentMessages.toMutableList().apply {
+                    add(0, Message(response.comment, isFromUser = false, transactionInfo = transactionInfo))
+                }
+            }
+        } else {
+            // Nếu chỉ có comment, tạo message bình thường
+            _messages.update { currentMessages ->
+                currentMessages.toMutableList().apply {
+                    add(0, Message(response.comment, isFromUser = false))
+                }
+            }
+        }
     }
 }
 sealed class AddTransactionState {

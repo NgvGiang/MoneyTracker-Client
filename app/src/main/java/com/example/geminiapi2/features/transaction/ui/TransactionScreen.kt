@@ -1,9 +1,12 @@
 package com.example.geminiapi2.features.transaction.ui
 
+import android.util.Log
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -11,27 +14,37 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.colorResource
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.example.geminiapi2.data.dto.TransactionResponse
+import com.example.geminiapi2.data.dto.WalletResponse
+import com.example.geminiapi2.features.navigation.Screen
+import com.example.geminiapi2.features.transaction.viewmodel.TransactionUiState
+import com.example.geminiapi2.features.transaction.viewmodel.TransactionViewModel
+import com.example.geminiapi2.ui.theme.primaryLightFigma
 import java.text.NumberFormat
 import java.time.LocalDate
 import java.time.Month
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 import java.util.*
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -40,13 +53,65 @@ fun TransactionScreen(
     viewModel: TransactionViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val wallets by viewModel.wallets.collectAsState()
+    val selectedWalletId by viewModel.walletId.collectAsState()
     val currentMonth by viewModel.currentMonth.collectAsState()
     val currentYear by viewModel.currentYear.collectAsState()
+    val categoryType by viewModel.categoryType.collectAsState()
+    val joinWalletResult by viewModel.joinWalletResult.collectAsState()
     
+    var showCreateWalletDialog by remember { mutableStateOf(false) }
+    var showJoinWalletDialog by remember { mutableStateOf(false) }
     var showMonthYearPicker by remember { mutableStateOf(false) }
-    
+    val selectedCategoryType by viewModel.categoryType.collectAsState()
     val currentMonthName = remember(currentMonth, currentYear) {
         YearMonth.of(currentYear, currentMonth).month.toString().capitalize() + " " + currentYear
+    }
+
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+
+    // Show snackbar if join wallet result is available
+    LaunchedEffect(joinWalletResult) {
+        joinWalletResult?.let {
+            when (it) {
+                is TransactionViewModel.JoinWalletResult.Success -> {
+                    scope.launch {
+                        snackbarHostState.showSnackbar("Your request has been sent")
+                        viewModel.clearJoinWalletResult()
+                    }
+                }
+                is TransactionViewModel.JoinWalletResult.Error -> {
+                    scope.launch {
+                        snackbarHostState.showSnackbar("Error: ${it.message}")
+                        viewModel.clearJoinWalletResult()
+                    }
+                }
+            }
+        }
+    }
+
+    // Refresh data when screen is displayed
+    LaunchedEffect(Unit) {
+        viewModel.refresh()
+    }
+
+    if (showCreateWalletDialog) {
+        CreateWalletDialog(
+            onDismiss = { showCreateWalletDialog = false },
+            onConfirm = { name, balance -> 
+                viewModel.createWallet(name, balance)
+            }
+        )
+    }
+
+    if (showJoinWalletDialog) {
+        JoinWalletDialog(
+            onDismiss = { showJoinWalletDialog = false },
+            onConfirm = { code -> 
+                viewModel.joinWallet(code)
+            }
+        )
     }
 
     if (showMonthYearPicker) {
@@ -63,54 +128,189 @@ fun TransactionScreen(
 
     Scaffold(
         topBar = {
-//                 Status bar space with gray background
-                TopAppBar(
-                    title = {
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                color = primaryLightFigma
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp, vertical = 16.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
                         Text(
-                            text = "Transactions",
+                            text = "Wallets",
                             style = MaterialTheme.typography.titleLarge.copy(
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 24.sp
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 20.sp,
+                                color = Color.White
                             )
                         )
-                    },
-                    actions = {
-                        // Calendar Icon Button
-                        IconButton(onClick = { showMonthYearPicker = true }) {
-                            Icon(
-                                imageVector = Icons.Default.CalendarMonth,
-                                contentDescription = "Calendar"
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            IconButton(onClick = { navController.navigate(Screen.WalletRequests.route) }) {
+                                Icon(
+                                    imageVector = Icons.Default.Notifications,
+                                    contentDescription = "Wallet Requests",
+                                    tint = Color.White
+                                )
+                            }
+                            IconButton(onClick = { showJoinWalletDialog = true }) {
+                                Icon(
+                                    imageVector = Icons.Default.GroupAdd,
+                                    contentDescription = "Join Wallet",
+                                    tint = Color.White
+                                )
+                            }
+                            IconButton(onClick = { showMonthYearPicker = true }) {
+                                Icon(
+                                    imageVector = Icons.Default.CalendarMonth,
+                                    contentDescription = "Calendar",
+                                    tint = Color.White
+                                )
+                            }
+                        }
+                    }
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    LazyRow(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        contentPadding = PaddingValues(horizontal = 16.dp)
+                    ) {
+                        items(wallets) { wallet ->
+                            WalletCard(
+                                wallet = wallet,
+                                isSelected = wallet.id == selectedWalletId,
+                                onSelect = { viewModel.setWalletId(wallet.id) },
+                                navController = navController
                             )
                         }
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = Color.Transparent
-
-                    )
-                )
-//            Box(
-//                        modifier = Modifier
-//                            .fillMaxWidth()
-//                            .height(WindowInsets.statusBars.asPaddingValues().calculateTopPadding())
-//                            .background(Color.Green.copy(alpha = 0.1f))
-//                        )
-
-        }
+                        
+                        item {
+                            Card(
+                                modifier = Modifier
+                                    .width(130.dp)
+                                    .height(90.dp)
+                                    .clickable { showCreateWalletDialog = true },
+                                shape = RoundedCornerShape(20.dp),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = Color(0xFFF3F4F5)
+                                )
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .padding(16.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Add,
+                                        contentDescription = "Add Wallet",
+                                        tint = Color(0xFF2F51FF),
+                                        modifier = Modifier.size(32.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
     ) { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
+            // Segment Control cho INCOME/EXPENSE
+            Card(
+                modifier = Modifier
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                    .height(40.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = Color(0xFFF3F4F5)
+                ),
+                shape = RoundedCornerShape(20.dp),
+                border = BorderStroke(1.dp, Color.Black.copy(alpha = 0.1f))
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(2.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
+                            .background(
+                                color = if (selectedCategoryType == "EXPENSE") 
+                                    Color(0xFFE25C5C) 
+                                else Color.Transparent,
+                                shape = RoundedCornerShape(18.dp)
+                            )
+                            .clickable { viewModel.setCategoryType("EXPENSE") },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "EXPENSE",
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                fontWeight = FontWeight.Medium,
+                                color = if (selectedCategoryType == "EXPENSE") 
+                                    Color.White 
+                                else Color.Gray
+                            )
+                        )
+                    }
+                    
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
+                            .background(
+                                color = if (selectedCategoryType == "INCOME") 
+                                    Color(0xFF53D258)
+                                else Color.Transparent,
+                                shape = RoundedCornerShape(18.dp)
+                            )
+                            .clickable { viewModel.setCategoryType("INCOME") },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "INCOME",
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                fontWeight = FontWeight.Medium,
+                                color = if (selectedCategoryType == "INCOME") 
+                                    Color.White 
+                                else Color.Gray
+                            )
+                        )
+                    }
+                }
+            }
+
             when (uiState) {
                 is TransactionUiState.Loading -> {
-                    CircularProgressIndicator(
-//                        modifier = Modifier.align(Alignment.Center)
-                    )
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator()
+                    }
                 }
 
                 is TransactionUiState.Error -> {
                     val errorMessage = (uiState as TransactionUiState.Error).message
+                    Log.e("TransactionError", errorMessage)
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
@@ -120,6 +320,7 @@ fun TransactionScreen(
                     ) {
                         Text(
                             text = "Error: $errorMessage",
+
                             color = MaterialTheme.colorScheme.error
                         )
                         Spacer(modifier = Modifier.height(16.dp))
@@ -156,104 +357,146 @@ fun MonthYearPickerDialog(
     
     Dialog(onDismissRequest = onDismiss) {
         Card(
-            shape = RoundedCornerShape(16.dp),
+            shape = RoundedCornerShape(24.dp),
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp)
+                .padding(horizontal = 16.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = Color.White
+            )
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp)
+                    .padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 // Title
                 Text(
-                    text = "Apr $selectedYear",
-                    style = MaterialTheme.typography.titleLarge,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(MaterialTheme.colorScheme.primary)
-                        .padding(16.dp),
-                    color = MaterialTheme.colorScheme.onPrimary,
-                    fontWeight = FontWeight.Bold
+                    text = "Select Date",
+                    style = MaterialTheme.typography.titleLarge.copy(
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color(0xFF212121)
+                    )
                 )
+                
+                Spacer(modifier = Modifier.height(24.dp))
                 
                 // Year selector
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(MaterialTheme.colorScheme.primary)
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                        .padding(horizontal = 16.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+                    IconButton(
+                        onClick = { selectedYear-- },
+                        modifier = Modifier
+                            .size(40.dp)
+                            .background(Color(0xFFF3F4F5), CircleShape)
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
+                            contentDescription = "Previous Year",
+                            tint = Color(0xFF212121)
+                        )
+                    }
+                    
                     Text(
                         text = "$selectedYear",
-                        style = MaterialTheme.typography.headlineMedium,
-                        color = MaterialTheme.colorScheme.onPrimary
+                        style = MaterialTheme.typography.titleLarge.copy(
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color(0xFF212121)
+                        )
                     )
-                    Row {
-                        IconButton(onClick = { selectedYear-- }) {
-                            Icon(
-                                imageVector = Icons.Default.KeyboardArrowUp,
-                                contentDescription = "Previous Year",
-                                tint = MaterialTheme.colorScheme.onPrimary
-                            )
-                        }
-                        IconButton(onClick = { selectedYear++ }) {
-                            Icon(
-                                imageVector = Icons.Default.KeyboardArrowDown,
-                                contentDescription = "Next Year",
-                                tint = MaterialTheme.colorScheme.onPrimary
-                            )
-                        }
+                    
+                    IconButton(
+                        onClick = { selectedYear++ },
+                        modifier = Modifier
+                            .size(40.dp)
+                            .background(Color(0xFFF3F4F5), CircleShape)
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                            contentDescription = "Next Year",
+                            tint = Color(0xFF212121)
+                        )
                     }
                 }
+                
+                Spacer(modifier = Modifier.height(24.dp))
                 
                 // Month grid
                 LazyVerticalGrid(
                     columns = GridCells.Fixed(4),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp)
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     items(Month.values()) { month ->
                         val isSelected = month.value == selectedMonth
                         Box(
                             modifier = Modifier
-                                .padding(4.dp)
-                                .size(65.dp)
-                                .clip(CircleShape)
+                                .size(72.dp)
+                                .clip(RoundedCornerShape(16.dp))
                                 .background(
-                                    if (isSelected) MaterialTheme.colorScheme.primary
-                                    else Color.Transparent
+                                    if (isSelected) Color(0xFF2F51FF)
+                                    else Color(0xFFF3F4F5)
                                 )
                                 .clickable { selectedMonth = month.value },
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
                                 text = month.toString().take(3),
-                                color = if (isSelected) MaterialTheme.colorScheme.onPrimary
-                                        else MaterialTheme.colorScheme.onSurface,
-                                fontWeight = FontWeight.Medium
+                                style = MaterialTheme.typography.bodyLarge.copy(
+                                    fontWeight = FontWeight.Medium,
+                                    color = if (isSelected) Color.White else Color(0xFF212121)
+                                )
                             )
                         }
                     }
                 }
                 
+                Spacer(modifier = Modifier.height(24.dp))
+                
                 // Buttons
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 16.dp),
-                    horizontalArrangement = Arrangement.End
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    TextButton(onClick = onDismiss) {
-                        Text("Cancel")
+                    OutlinedButton(
+                        onClick = onDismiss,
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = Color(0xFF2F51FF)
+                        ),
+                        border = BorderStroke(1.dp, Color(0xFF2F51FF))
+                    ) {
+                        Text(
+                            text = "Cancel",
+                            style = MaterialTheme.typography.bodyLarge.copy(
+                                fontWeight = FontWeight.Medium
+                            )
+                        )
                     }
-                    Spacer(modifier = Modifier.width(8.dp))
-                    TextButton(onClick = { onConfirm(selectedYear, selectedMonth) }) {
-                        Text("OK")
+                    
+                    Button(
+                        onClick = { onConfirm(selectedYear, selectedMonth) },
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF2F51FF)
+                        )
+                    ) {
+                        Text(
+                            text = "Select",
+                            style = MaterialTheme.typography.bodyLarge.copy(
+                                fontWeight = FontWeight.Medium,
+                                color = Color.White
+                            )
+                        )
                     }
                 }
             }
@@ -263,7 +506,7 @@ fun MonthYearPickerDialog(
 
 @Composable
 fun TransactionContent(
-    data: com.example.geminiapi2.data.dto.TransactionSummaryResponse,
+    data: List<TransactionResponse>,
     currentMonthName: String,
     onMonthSelectorClick: () -> Unit
 ) {
@@ -297,69 +540,7 @@ fun TransactionContent(
             )
         }
 
-        // Summary Card
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 8.dp),
-            shape = RoundedCornerShape(12.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-            )
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(12.dp),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Column {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = Icons.Default.ArrowDownward,
-                            contentDescription = "Expense",
-                            tint = Color.Red,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            formatAmount(data.totalExpense),
-                            color = Color.Red,
-                            fontWeight = FontWeight.Bold,
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                    }
-                }
-                Column {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = Icons.Default.ArrowUpward,
-                            contentDescription = "Income",
-                            tint = Color(0xFF00BFA5),
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            formatAmount(data.totalIncome),
-                            color = Color(0xFF00BFA5),
-                            fontWeight = FontWeight.Bold,
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                    }
-                }
-                Column {
-                    Text(
-                        formatAmount(data.actual),
-                        fontWeight = FontWeight.Bold,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = if (data.actual >= 0) Color(0xFF00BFA5) else Color.Red
-                    )
-                }
-            }
-        }
-
-        // Transactions List
-        if (data.transactions.isEmpty()) {
+        if (data.isEmpty()) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -374,81 +555,63 @@ fun TransactionContent(
             }
         } else {
             LazyColumn(
-                modifier = Modifier.padding(top = 4.dp)
+                modifier = Modifier.padding(top = 4.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                var currentDate: String? = null
-                
-                items(data.transactions) { transaction ->
+                items(data) { transaction ->
                     val transactionDate = transaction.date.split("T")[0] // Xử lý format ISO
+                    val formattedDate = formatDateFromString(transactionDate) // Giữ format hiện tại
                     
-                    if (currentDate != transactionDate) {
-                        currentDate = transactionDate
-                        // Date Header
-                        Text(
-                            text = formatDateFromString(transactionDate),
-                            modifier = Modifier.padding(top = 12.dp, bottom = 4.dp),
-                            style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    
-                    // Transaction Item
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 6.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                    // Transaction Item Card
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(8.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = Color(0xFFF3F4F5) // Màu nền xám nhạt
+                        ),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
                     ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            // Category Icon
-                            Box(
-                                modifier = Modifier
-                                    .size(36.dp)
-                                    .clip(CircleShape)
-                                    .background(MaterialTheme.colorScheme.primaryContainer),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    imageVector = when (transaction.catName.lowercase()) {
-                                        "entertainment" -> Icons.Default.Celebration
-                                        "food" -> Icons.Default.Restaurant
-                                        "transport" -> Icons.Default.DirectionsCar
-                                        "shopping" -> Icons.Default.ShoppingCart
-                                        "health" -> Icons.Default.HealthAndSafety
-                                        "education" -> Icons.Default.School
-                                        "salary" -> Icons.Default.AttachMoney
-                                        else -> Icons.Default.Category
-                                    },
-                                    contentDescription = transaction.catName,
-                                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                    modifier = Modifier.size(20.dp)
-                                )
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(12.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Spacer(modifier = Modifier.width(10.dp))
+                                Column {
+                                    Text(
+                                        text = transaction.category,
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                    Spacer(modifier = Modifier.height(4.dp)) // Khoảng cách giữa Category và Date
+                                    Text(
+                                        text = formattedDate, // Hiển thị ngày đã format
+                                        style = MaterialTheme.typography.bodySmall.copy( // Style nhỏ hơn, màu xám
+                                            color = Color(0xFF707070), // Màu xám từ Figma
+                                            fontSize = 11.sp // Cỡ chữ từ Figma
+                                        )
+                                    )
+                                }
                             }
-                            Spacer(modifier = Modifier.width(10.dp))
-                            Column {
-                                Text(
-                                    text = transaction.catName,
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    fontWeight = FontWeight.Medium
-                                )
+                            
+                            // Amount with appropriate color based on category type
+                            val amountColor = if (transaction.categoryType.equals("INCOME", ignoreCase = true)) {
+                                Color(0xFF53D258)
+                            } else {
+                                Color(0xFFE25C5C)
                             }
-                        }
-                        
-                        // Amount with appropriate color based on category type
-                        val amountColor = if (transaction.categoryType.equals("INCOME", ignoreCase = true)) {
-                            Color(0xFF00BFA5) // Green for income
-                        } else {
-                            Color.Red // Red for expense
-                        }
-                        
-                        Text(
-                            text = formatAmount(transaction.amount),
-                            style = MaterialTheme.typography.bodyLarge.copy(
-                                fontWeight = FontWeight.Medium,
-                                color = amountColor
+                            
+                            Text(
+                                text = formatAmount(transaction.amount),
+                                style = MaterialTheme.typography.bodyLarge.copy(
+                                    fontWeight = FontWeight.Medium,
+                                    color = amountColor
+                                )
                             )
-                        )
+                        }
                     }
                 }
             }
@@ -471,5 +634,101 @@ private fun formatAmount(amount: Double): String {
 private fun String.capitalize(): String {
     return this.lowercase().replaceFirstChar { 
         if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() 
+    }
+}
+
+@Composable
+fun WalletCard(
+    wallet: WalletResponse,
+    isSelected: Boolean,
+    onSelect: () -> Unit,
+    navController: NavController
+) {
+    Card(
+        modifier = Modifier
+            .width(130.dp)
+            .height(90.dp)
+            .clickable(onClick = onSelect),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.Transparent),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = 8.dp,
+            pressedElevation = 4.dp
+        )
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    brush = Brush.linearGradient(
+                        colors = if (isSelected) {
+                            listOf(Color(0xFF2F51FF), Color(0xFF0E33F3))
+                        } else {
+                            listOf(MaterialTheme.colorScheme.surface, MaterialTheme.colorScheme.surface)
+                        }
+                    )
+                )
+                .padding(16.dp)
+        ) {
+            // Icon Edit ở góc trên bên phải
+            IconButton(
+                onClick = { navController.navigate(Screen.WalletDetail.createRoute(wallet.id)) },
+                modifier = Modifier.align(Alignment.TopEnd).size(24.dp).padding(0.dp) // Căn chỉnh và kích thước
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Edit,
+                    contentDescription = "Edit Wallet",
+                    tint = if (isSelected) Color.White.copy(alpha = 0.7f) else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                    modifier = Modifier.size(14.dp) // Kích thước icon nhỏ hơn
+                )
+            }
+            
+            Column(
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = wallet.walletName,
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            fontFamily = FontFamily.Default,
+                            fontSize = 12.sp,
+                            letterSpacing = 0.02.em,
+                            color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurface
+                        ),
+                        maxLines = 1,
+                        modifier = Modifier.weight(1f, fill = false) // Để Text không chiếm hết không gian khi có Icon
+                    )
+                }
+                
+                Column {
+                    Text(
+                        text = "Total Balance",
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            fontFamily = FontFamily.Default,
+                            fontSize = 12.sp,
+                            letterSpacing = 0.02.em,
+                            color = (if (isSelected) Color.White else MaterialTheme.colorScheme.onSurface).copy(alpha = 0.7f)
+                        )
+                    )
+                    
+                    Text(
+                        text = formatAmount(wallet.currentBalance),
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            fontFamily = FontFamily.Default,
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 18.sp,
+                            letterSpacing = 0.02.em,
+                            color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurface
+                        ),
+                        maxLines = 1
+                    )
+                }
+            }
+        }
     }
 }

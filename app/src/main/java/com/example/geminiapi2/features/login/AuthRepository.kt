@@ -4,7 +4,7 @@ import android.util.Log
 import com.example.geminiapi2.data.ApiService
 import com.example.geminiapi2.data.dto.AuthResponse
 import com.example.geminiapi2.data.dto.LoginRequest
-import com.example.geminiapi2.data.RegisterRequest
+import com.example.geminiapi2.data.dto.RegisterRequest
 import com.google.gson.Gson
 import javax.inject.Inject
 import javax.inject.Singleton

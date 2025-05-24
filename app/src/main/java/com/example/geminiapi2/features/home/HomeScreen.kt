@@ -1,5 +1,7 @@
 package com.example.geminiapi2.features.home
 
+import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
@@ -10,9 +12,21 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.PieChart
+import androidx.compose.material.icons.filled.Wallet
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FabPosition
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -20,13 +34,14 @@ import androidx.navigation.NavController
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
-import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.geminiapi2.features.budget.ui.BudgetScreen
 import com.example.geminiapi2.features.dashboard.ui.DashboardScreen
 import com.example.geminiapi2.features.navigation.Screen
 import com.example.geminiapi2.features.profile.ui.ProfileScreen
 import com.example.geminiapi2.features.transaction.ui.TransactionScreen
+import com.example.geminiapi2.features.transaction.viewmodel.TransactionViewModel
+
 
 data class BottomNavItem(
     val title: String, val icon: ImageVector, val route: String
@@ -48,7 +63,10 @@ data class BottomNavItem(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen(appNavController: NavController) {
+fun HomeScreen(
+    appNavController: NavController,
+    transactionViewModel: TransactionViewModel
+) {
     val bottomNavItems = listOf(
         BottomNavItem("Dashboard", Icons.Default.Home, Screen.BottomNav.Dashboard.route),
         BottomNavItem("Transaction", Icons.Default.Wallet, Screen.BottomNav.Transaction.route),
@@ -69,13 +87,11 @@ fun HomeScreen(appNavController: NavController) {
     }
         , bottomBar = {
         NavigationBar {
-            val navBackStackEntry by navController.currentBackStackEntryAsState()
-            val currentRoute = navBackStackEntry?.destination?.route
-
             bottomNavItems.forEach { item ->
-                NavigationBarItem(icon = { Icon(item.icon, contentDescription = item.title) },
+                NavigationBarItem(
+                    icon = { Icon(item.icon, contentDescription = item.title) },
                     label = { Text(item.title) },
-                    selected = currentRoute == item.route,
+                    selected = navController.currentDestination?.route == item.route,
                     onClick = {
                         navController.navigate(item.route) {
                             popUpTo(navController.graph.findStartDestination().id) {
@@ -84,7 +100,8 @@ fun HomeScreen(appNavController: NavController) {
                             launchSingleTop = true
                             restoreState = true
                         }
-                    })
+                    }
+                )
             }
         }
     },
@@ -107,14 +124,28 @@ fun HomeScreen(appNavController: NavController) {
         NavHost(
             navController = navController,
             startDestination = Screen.BottomNav.Dashboard.route,
-            modifier = Modifier.padding(paddingValues)
+            modifier = Modifier.padding(paddingValues),
+            enterTransition = { 
+                slideIntoContainer(
+                    towards = AnimatedContentTransitionScope.SlideDirection.Start,
+                    animationSpec = tween(300)
+                )
+             },
+            exitTransition = { 
+                slideOutOfContainer(
+                    towards = AnimatedContentTransitionScope.SlideDirection.End, 
+                    animationSpec = tween(150)
+                )
+             },
         ) {
             composable(Screen.BottomNav.Dashboard.route) { DashboardScreen() }
-            composable(Screen.BottomNav.Transaction.route) { TransactionScreen(navController = appNavController) }
+            composable(Screen.BottomNav.Transaction.route) { 
+                TransactionScreen(
+                    navController = appNavController,
+                    viewModel = transactionViewModel
+                ) 
+            }
             composable(Screen.BottomNav.Budget.route) { BudgetScreen() }
-//            composable(Screen.BottomNav.Transaction.route) {
-//                TransactionScreen(navController = navController)
-//            }
             composable(Screen.BottomNav.Profile.route) {
                 ProfileScreen(
                     onNavigateToLogin = {

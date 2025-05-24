@@ -4,6 +4,6 @@ class AddTransactionResponse(
     val category: String,
     val date: String,
     val amount: Int,
-    val category_type: String,
+    val categoryType: String,
     val comment: String
 )
