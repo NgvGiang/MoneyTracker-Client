@@ -4,7 +4,7 @@ import androidx.compose.ui.graphics.Color
 // Figma Colors based on node 1:30912
 
 // Primary
-val primaryBrand = Color(0xFF0E33F3) // Main Primary
+val primaryBrand = Color(0xFF0066EE) // Main Primary
 val primaryLightFigma = Color(0xFFA0CCF8)
 val primaryDarkFigma = Color(0xFF57A4F2)
 
@@ -135,7 +135,7 @@ val errorLightMediumContrast = Color(0xFF740006)
 val onErrorLightMediumContrast = Color(0xFFFFFFFF)
 val errorContainerLightMediumContrast = Color(0xFFCF2C27)
 val onErrorContainerLightMediumContrast = Color(0xFFFFFFFF)
-val backgroundLightMediumContrast = Color(0xFFF9F9FF)
+val backgroundLightMediumContrast = Color(0xFFF5FAFF)
 val onBackgroundLightMediumContrast = Color(0xFF191C20)
 val surfaceLightMediumContrast = Color(0xFFF9F9FF)
 val onSurfaceLightMediumContrast = Color(0xFF0F1116)

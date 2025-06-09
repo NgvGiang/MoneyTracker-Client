@@ -17,6 +17,8 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PieChart
 import androidx.compose.material.icons.filled.Wallet
+import androidx.compose.material.icons.filled.SmartToy
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FabPosition
 import androidx.compose.material3.FloatingActionButton
@@ -27,6 +29,10 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -41,6 +47,7 @@ import com.example.geminiapi2.features.navigation.Screen
 import com.example.geminiapi2.features.profile.ui.ProfileScreen
 import com.example.geminiapi2.features.transaction.ui.TransactionScreen
 import com.example.geminiapi2.features.transaction.viewmodel.TransactionViewModel
+import com.example.geminiapi2.features.transaction.ui.ExpandableFab
 
 
 data class BottomNavItem(
@@ -84,8 +91,7 @@ fun HomeScreen(
                 .height(WindowInsets.statusBars.asPaddingValues().calculateTopPadding())
                 .background(Color.LightGray.copy(alpha = 01f))
         )
-    }
-        , bottomBar = {
+    }, bottomBar = {
         NavigationBar {
             bottomNavItems.forEach { item ->
                 NavigationBarItem(
@@ -104,23 +110,7 @@ fun HomeScreen(
                 )
             }
         }
-    },
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = { appNavController.navigate(Screen.ChatBotAdd.route) },
-                shape = CircleShape,
-                containerColor = MaterialTheme.colorScheme.primary
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Add,
-                    contentDescription = "Add Transaction",
-                    tint = MaterialTheme.colorScheme.onPrimary
-                )
-            }
-        },
-        floatingActionButtonPosition = FabPosition.End,
-
-        ) { paddingValues ->
+    }) { paddingValues ->
         NavHost(
             navController = navController,
             startDestination = Screen.BottomNav.Dashboard.route,
@@ -138,7 +128,9 @@ fun HomeScreen(
                 )
              },
         ) {
-            composable(Screen.BottomNav.Dashboard.route) { DashboardScreen() }
+            composable(Screen.BottomNav.Dashboard.route) { 
+                DashboardScreen(navController = appNavController) 
+            }
             composable(Screen.BottomNav.Transaction.route) { 
                 TransactionScreen(
                     navController = appNavController,

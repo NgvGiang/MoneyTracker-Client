@@ -35,6 +35,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import com.example.geminiapi2.GeminiTextViewModel
 import com.example.geminiapi2.data.dto.Message
 import com.example.geminiapi2.features.transaction.viewmodel.AddTransactionState
@@ -42,6 +43,7 @@ import com.example.geminiapi2.features.transaction.viewmodel.ChatBotViewModel
 import com.example.geminiapi2.features.transaction.viewmodel.TransactionViewModel
 //import androidx.compose.material.icons.Default
 import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Error
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import com.example.geminiapi2.data.dto.TransactionInfo
@@ -49,6 +51,8 @@ import java.text.NumberFormat
 import java.util.*
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
+import org.json.JSONObject
+import kotlinx.coroutines.launch
 
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
@@ -66,21 +70,95 @@ fun ChatbotAddScreen(
 
     val selectedWalletId by transactionViewModel.walletId.collectAsState()
     
+    // Thêm snackbar host state
+    val snackbarHostState = remember { SnackbarHostState() }
+    
+    // Thêm state cho error dialog (giữ cho các lỗi khác)
+    var showErrorDialog by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf("") }
+    
     // Add logging
     LaunchedEffect(selectedWalletId) {
         Log.d("ChatBotAddScreen", "Selected Wallet ID: $selectedWalletId")
     }
 
-    // Theo dõi trạng thái gửi tin nhắn
+    // Theo dõi trạng thái gửi tin nhắn và xử lý lỗi
     LaunchedEffect(sendStatus) {
-        if (sendStatus == AddTransactionState.Success) {
-            // Khi giao dịch được tạo thành công, cập nhật lại danh sách ví
-            transactionViewModel.fetchWallets()
+        when (val currentStatus = sendStatus) {
+            is AddTransactionState.Success -> {
+                Log.d("ChatBotAddScreen", "Transaction created successfully")
+                // Khi giao dịch được tạo thành công, cập nhật lại danh sách ví
+                transactionViewModel.fetchWallets()
+            }
+            is AddTransactionState.Error -> {
+                Log.e("ChatBotAddScreen", "Error creating transaction: ${currentStatus.message}")
+                
+                // Parse JSON response để lấy code và message
+                try {
+                    val jsonObject = JSONObject(currentStatus.message)
+                    val code = jsonObject.optString("code", "")
+                    val message = jsonObject.optString("message", currentStatus.message)
+                    
+                    // Kiểm tra nếu code bắt đầu với "exception.message."
+                    if (code.startsWith("exception.message.")) {
+                        // Hiển thị snackbar với message từ BE
+                        launch {
+                            snackbarHostState.showSnackbar(message)
+                        }
+                    } else {
+                        // Hiển thị error dialog cho các lỗi khác
+                        errorMessage = message
+                        showErrorDialog = true
+                    }
+                } catch (e: Exception) {
+                    // Nếu không parse được JSON, fallback về cách xử lý cũ
+                    Log.w("ChatBotAddScreen", "Cannot parse error response as JSON, using fallback")
+                    when {
+                        currentStatus.message.contains("Insufficient balance", ignoreCase = true) ||
+                        currentStatus.message.contains("insufficientBalance", ignoreCase = true) -> {
+                            // Hiển thị snackbar cho lỗi insufficient balance
+                            launch {
+                                snackbarHostState.showSnackbar("Số dư không đủ để thực hiện giao dịch này!")
+                            }
+                        }
+                        else -> {
+                            // Hiển thị error dialog cho các lỗi khác
+                            errorMessage = currentStatus.message
+                            showErrorDialog = true
+                        }
+                    }
+                }
+            }
+            is AddTransactionState.Loading -> {
+                Log.d("ChatBotAddScreen", "Creating transaction...")
+            }
+            is AddTransactionState.Idle -> {
+                Log.d("ChatBotAddScreen", "Transaction state idle")
+            }
         }
     }
 
-    Scaffold(
+    // Log messages để debug
+    LaunchedEffect(messages) {
+        Log.d("ChatBotAddScreen", "Messages updated. Count: ${messages.size}")
+        messages.forEach { message ->
+            Log.d("ChatBotAddScreen", "Message: isFromUser=${message.isFromUser}, text=${message.text}, hasTransaction=${message.transactionInfo != null}")
+        }
+    }
 
+    // Error Dialog
+    if (showErrorDialog) {
+        ErrorDialog(
+            message = errorMessage,
+            onDismiss = { 
+                showErrorDialog = false
+                errorMessage = ""
+            }
+        )
+    }
+
+    Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             Box(
                 modifier = Modifier
@@ -153,11 +231,15 @@ fun ChatbotAddScreen(
 //                )
                 TextField(
                     value = messageText,
-                    onValueChange = {
-                        if (it.length <= 120) {
-                            messageText = it
+                    onValueChange = { newValue ->
+                        try {
+                            Log.d("ChatBotAddScreen", "TextField onValueChange: newValue='$newValue', length=${newValue?.length ?: 0}")
+                            if ((newValue?.length ?: 0) <= 120) {
+                                messageText = newValue ?: ""
+                            }
+                        } catch (e: Exception) {
+                            Log.e("ChatBotAddScreen", "Error in TextField onValueChange: ${e.message}", e)
                         }
-//                        messageText = it
                     },
                     colors = TextFieldDefaults.colors(
                         unfocusedContainerColor = Color(0xFFF0F0F0),  // Màu nền xám nhạt
@@ -180,11 +262,22 @@ fun ChatbotAddScreen(
 
                 Button(
                     onClick = {
-                        if (messageText.isNotBlank()) {
-                            selectedWalletId?.let { walletId ->
-                                chatbotViewmodel.sendAddTransactionMessage(messageText, walletId)
-                                messageText = ""
+                        try {
+                            Log.d("ChatBotAddScreen", "Button clicked. MessageText: '$messageText', length: ${messageText.length}")
+                            
+                            if (messageText.isNotBlank()) {
+                                selectedWalletId?.let { walletId ->
+                                    Log.d("ChatBotAddScreen", "Sending message: '$messageText' to walletId: $walletId")
+                                    chatbotViewmodel.sendAddTransactionMessage(messageText, walletId)
+                                    messageText = ""
+                                } ?: run {
+                                    Log.e("ChatBotAddScreen", "No wallet selected, cannot send message")
+                                }
+                            } else {
+                                Log.w("ChatBotAddScreen", "Attempted to send blank message")
                             }
+                        } catch (e: Exception) {
+                            Log.e("ChatBotAddScreen", "Error in button onClick: ${e.message}", e)
                         }
                     },
                     enabled = messageText.isNotBlank() && sendStatus != AddTransactionState.Loading,
@@ -227,6 +320,23 @@ fun ChatbotAddScreen(
 
 @Composable
 fun ChatMessageItem(message: Message) {
+    // Xử lý data an toàn trước khi render UI
+    val safeText = try {
+        message.text ?: ""
+    } catch (e: Exception) {
+        Log.e("ChatBotAddScreen", "Error accessing message text: ${e.message}", e)
+        "Error loading message"
+    }
+    
+    val hasTransactionInfo = try {
+        message.transactionInfo != null
+    } catch (e: Exception) {
+        Log.e("ChatBotAddScreen", "Error checking transaction info: ${e.message}", e)
+        false
+    }
+    
+    Log.d("ChatBotAddScreen", "Rendering message: isFromUser=${message.isFromUser}, text='$safeText', textLength=${safeText.length}")
+        
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -245,7 +355,7 @@ fun ChatMessageItem(message: Message) {
                     .widthIn(max = 300.dp)
             ) {
                 Text(
-                    text = message.text,
+                    text = safeText,
                     color = MaterialTheme.colorScheme.onPrimary,
                     textAlign = TextAlign.Justify,
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 12.dp)
@@ -258,29 +368,56 @@ fun ChatMessageItem(message: Message) {
                     .widthIn(max = 300.dp)
                     .padding(vertical = 4.dp)
             ) {
-                message.transactionInfo?.let { transaction ->
-                    // Hiển thị thông tin giao dịch trong một card đẹp
-                    TransactionCard(transaction)
-                    
-                    // Hiển thị comment riêng biệt
-                    Spacer(modifier = Modifier.height(8.dp))
-                    
-                    Box(
-                        modifier = Modifier
-                            .background(
-                                MaterialTheme.colorScheme.surfaceVariant,
-                                shape = RoundedCornerShape(16.dp)
-                            )
-                            .padding(2.dp)
-                    ) {
-                        Text(
-                            text = message.text,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            textAlign = TextAlign.Justify,
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 12.dp)
-                        )
+                if (hasTransactionInfo) {
+                    // Xử lý transaction data an toàn trước khi render
+                    val transactionData = try {
+                        message.transactionInfo
+                    } catch (e: Exception) {
+                        Log.e("ChatBotAddScreen", "Error accessing transaction info: ${e.message}", e)
+                        null
                     }
-                } ?: run {
+                    
+                    if (transactionData != null) {
+                        // Hiển thị thông tin giao dịch trong một card đẹp
+                        TransactionCard(transactionData)
+                        
+                        // Hiển thị comment riêng biệt
+                        Spacer(modifier = Modifier.height(8.dp))
+                        
+                        Box(
+                            modifier = Modifier
+                                .background(
+                                    MaterialTheme.colorScheme.surfaceVariant,
+                                    shape = RoundedCornerShape(16.dp)
+                                )
+                                .padding(2.dp)
+                        ) {
+                            Text(
+                                text = safeText,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = TextAlign.Justify,
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 12.dp)
+                            )
+                        }
+                    } else {
+                        // Fallback to normal message nếu có lỗi với transaction data
+                        Box(
+                            modifier = Modifier
+                                .background(
+                                    MaterialTheme.colorScheme.surfaceVariant,
+                                    shape = RoundedCornerShape(16.dp)
+                                )
+                                .padding(2.dp)
+                        ) {
+                            Text(
+                                text = "Error loading transaction info",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = TextAlign.Justify,
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 12.dp)
+                            )
+                        }
+                    }
+                } else {
                     // Nếu không có thông tin giao dịch, hiển thị tin nhắn bình thường
                     Box(
                         modifier = Modifier
@@ -291,7 +428,7 @@ fun ChatMessageItem(message: Message) {
                             .padding(2.dp)
                     ) {
                         Text(
-                            text = message.text,
+                            text = safeText,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             textAlign = TextAlign.Justify,
                             modifier = Modifier.padding(horizontal = 12.dp, vertical = 12.dp)
@@ -367,8 +504,8 @@ fun TransactionCard(transaction: TransactionInfo) {
                 }
             }
             
-            Divider(
-                color = Color.LightGray.copy(alpha = 0.5f),
+            HorizontalDivider(
+                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
                 thickness = 1.dp,
                 modifier = Modifier.padding(vertical = 4.dp)
             )
@@ -416,5 +553,76 @@ private fun formatDate(dateString: String): String {
         date.format(DateTimeFormatter.ofPattern("dd MMM yyyy", Locale.ENGLISH))
     } catch (e: Exception) {
         dateString
+    }
+}
+
+@Composable
+fun ErrorDialog(
+    message: String,
+    onDismiss: () -> Unit
+) {
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+            shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surface
+            ),
+            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // Error Icon
+                Icon(
+                    imageVector = Icons.Default.Error,
+                    contentDescription = "Error",
+                    tint = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.size(48.dp)
+                )
+                
+                // Title
+                Text(
+                    text = "Transaction Error",
+                    style = MaterialTheme.typography.titleLarge.copy(
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                )
+                
+                // Error Message
+                Text(
+                    text = message,
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    ),
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                )
+                
+                // Dismiss Button
+                Button(
+                    onClick = onDismiss,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary
+                    )
+                ) {
+                    Text(
+                        text = "OK",
+                        style = MaterialTheme.typography.bodyLarge.copy(
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onPrimary
+                        )
+                    )
+                }
+            }
+        }
     }
 }

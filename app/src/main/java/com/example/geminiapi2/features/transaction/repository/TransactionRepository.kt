@@ -146,7 +146,10 @@ class TransactionRepository @Inject constructor(
             try {
                 val response = apiService.removeWalletRequest(requestId)
                 if (response.isSuccessful) {
-                    Result.success(response.body() ?: "Request deleted successfully")
+                    response.body()?.let { responseBody ->
+                        val message = responseBody.string()
+                        Result.success(message)
+                    } ?: Result.success("Request deleted successfully")
                 } else {
                     Result.failure(Exception("Failed to delete request: ${response.code()} - ${response.message()}"))
                 }

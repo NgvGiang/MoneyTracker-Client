@@ -12,6 +12,17 @@ import com.example.geminiapi2.data.dto.WalletResponse
 import com.example.geminiapi2.data.dto.CreateWalletRequest
 import com.example.geminiapi2.data.dto.JoinWalletResponse
 import com.example.geminiapi2.data.dto.WalletRequestDTO
+import com.example.geminiapi2.data.dto.ManualAddTransactionRequest
+import com.example.geminiapi2.data.dto.CatDTO
+import com.example.geminiapi2.data.dto.CreateCategoryRequest
+import com.example.geminiapi2.data.dto.UpdateCategoryRequest
+import com.example.geminiapi2.data.dto.SummaryRequestDTO
+import com.example.geminiapi2.data.dto.SummaryResponseDTO
+import com.example.geminiapi2.data.dto.MacroResponse
+import com.example.geminiapi2.data.dto.MacroRequest
+import com.example.geminiapi2.data.dto.savingpot.CreateSavingPotRequest
+import com.example.geminiapi2.data.dto.savingpot.SavingPotResponse
+import okhttp3.ResponseBody
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.GET
@@ -29,6 +40,9 @@ interface ApiService {
     
     @POST("chatbot/chat/addTransaction")
     suspend fun addTransaction(@Body request: AddTransactionRequest): Response<AddTransactionResponse>
+
+    @POST("apiservice/api/transactions/create")
+    suspend fun addManualTransaction(@Body request: ManualAddTransactionRequest): Response<TransactionResponse>
 
     @POST("notification/pushDeviceToken")
     suspend fun pushDeviceToken(@Body request: DeviceTokenRequest): Response<DeviceTokenResponse>
@@ -60,11 +74,40 @@ interface ApiService {
     suspend fun getAllWalletRequests(): Response<List<WalletRequestDTO>>
 
     @DELETE("apiservice/api/wallet/remove_request/{requestId}")
-    suspend fun removeWalletRequest(@Path("requestId") requestId: Int): Response<String>
+    suspend fun removeWalletRequest(@Path("requestId") requestId: Int): Response<ResponseBody>
 
     @POST("apiservice/api/wallet/response_invitation")
     suspend fun respondToInvitation(
         @Query("requestId") requestId: Int,
         @Query("status") status: String
     ): Response<WalletResponse>
+
+    @GET("apiservice/api/categories/wallet/{walletId}")
+    suspend fun getUserCategories(@Path("walletId") walletId: Int): Response<List<CatDTO>>
+
+    @POST("apiservice/api/categories/create")
+    suspend fun createCategory(@Body request: CreateCategoryRequest): Response<CatDTO>
+
+    @POST("apiservice/api/categories/update")
+    suspend fun updateCategory(@Body request: UpdateCategoryRequest): Response<CatDTO>
+
+    @DELETE("apiservice/api/categories/delete/{id}")
+    suspend fun deleteCategory(@Path("id") id: Int): Response<ResponseBody>
+
+    @POST("apiservice/api/transactions/get_summary")
+    suspend fun getSummary(@Body request: SummaryRequestDTO): Response<SummaryResponseDTO>
+
+    @GET("apiservice/api/macro/get")
+    suspend fun getMacro(): Response<MacroResponse>
+
+    @POST("apiservice/api/macro/create")
+    suspend fun createMacro(@Body request: MacroRequest): Response<MacroResponse>
+
+    // Saving Pots zone
+    @POST("/apiservice/api/saving-pots/create")
+    suspend fun createSavingPot(@Body request: CreateSavingPotRequest): Response<SavingPotResponse>
+
+    @GET("/apiservice/api/saving-pots/all")
+    suspend fun getAllSavingPots(): Response<List<SavingPotResponse>>
+
 }

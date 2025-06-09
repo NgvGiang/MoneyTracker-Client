@@ -99,9 +99,7 @@ class GeminiTextViewModel @Inject constructor(
             return
         }
 
-        val bitmapImage = imageUri?.let { uri ->
-            loadBitmapFromUri(contentResolver, uri)
-        }
+        val bitmapImage = loadBitmapFromUri(contentResolver, imageUri)
         try {
             val response = generativeModel.generateContent(
                 content {

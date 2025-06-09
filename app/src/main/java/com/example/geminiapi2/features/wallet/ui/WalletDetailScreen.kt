@@ -23,6 +23,7 @@ import androidx.navigation.NavController
 import com.example.geminiapi2.data.dto.WalletResponse
 import com.example.geminiapi2.features.wallet.viewmodel.WalletDetailUiState
 import com.example.geminiapi2.features.wallet.viewmodel.WalletDetailViewModel
+import com.example.geminiapi2.features.navigation.Screen
 import java.text.NumberFormat
 import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
@@ -70,7 +71,7 @@ fun WalletDetailScreen(
                     )
                 }
                 is WalletDetailUiState.Success -> {
-                    WalletDetailsContent(wallet = state.wallet, viewModel = viewModel)
+                    WalletDetailsContent(wallet = state.wallet, navController = navController, viewModel = viewModel)
                 }
             }
         }
@@ -80,6 +81,7 @@ fun WalletDetailScreen(
 @Composable
 fun WalletDetailsContent(
     wallet: WalletResponse,
+    navController: NavController,
     viewModel: WalletDetailViewModel = hiltViewModel()
 ) {
     LazyColumn(
@@ -92,7 +94,7 @@ fun WalletDetailsContent(
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
+                    .padding(horizontal = 4.dp),
                 shape = RoundedCornerShape(24.dp),
                 colors = CardDefaults.cardColors(
                     containerColor = Color(0xFF2F51FF)
@@ -136,7 +138,7 @@ fun WalletDetailsContent(
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
+                    .padding(horizontal = 4.dp),
                 shape = RoundedCornerShape(24.dp),
                 colors = CardDefaults.cardColors(
                     containerColor = Color.White
@@ -199,7 +201,7 @@ fun WalletDetailsContent(
                                     containerColor = Color(0xFF2F51FF)
                                 ),
                                 shape = RoundedCornerShape(12.dp),
-                                modifier = Modifier.padding(start = 8.dp)
+                                modifier = Modifier.padding(start = 4.dp)
                             ) {
                                 Text(
                                     text = "Generate Code",
@@ -214,13 +216,62 @@ fun WalletDetailsContent(
                 }
             }
         }
+
+        item {
+            // Manage Categories Button
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 4.dp),
+                shape = RoundedCornerShape(24.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = Color.White
+                ),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(24.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    Text(
+                        text = "Category Management",
+                        style = MaterialTheme.typography.titleLarge.copy(
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color(0xFF212121)
+                        )
+                    )
+                    
+                    Button(
+                        onClick = { 
+                            navController.navigate(Screen.ManageCategories.createRoute(wallet.id))
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF2F51FF)
+                        ),
+                        shape = RoundedCornerShape(16.dp)
+                    ) {
+                        Text(
+                            text = "Manage Categories",
+                            style = MaterialTheme.typography.bodyLarge.copy(
+                                color = Color.White,
+                                fontWeight = FontWeight.Medium
+                            ),
+                            modifier = Modifier.padding(vertical = 4.dp)
+                        )
+                    }
+                }
+            }
+        }
         
         item {
             // Phần Members
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
+                    .padding(horizontal = 4.dp)
             ) {
                 Text(
                     text = "Members",
@@ -228,7 +279,7 @@ fun WalletDetailsContent(
                         fontWeight = FontWeight.SemiBold,
                         color = Color(0xFF212121)
                     ),
-                    modifier = Modifier.padding(vertical = 8.dp)
+                    modifier = Modifier.padding(vertical = 4.dp)
                 )
             }
         }
@@ -238,7 +289,7 @@ fun WalletDetailsContent(
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp),
+                        .padding(horizontal = 4.dp),
                     shape = RoundedCornerShape(16.dp),
                     colors = CardDefaults.cardColors(
                         containerColor = Color(0xFFF3F4F5)

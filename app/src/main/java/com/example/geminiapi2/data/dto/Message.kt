@@ -11,5 +11,5 @@ data class TransactionInfo(
     val date: String,
     val amount: Int,
     val categoryType: String,
-    val comment: String
+    val description: String
 )

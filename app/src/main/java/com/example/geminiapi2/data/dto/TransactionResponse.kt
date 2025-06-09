@@ -7,5 +7,6 @@ data class TransactionResponse(
     val amount: Double,
     val date: String, // LocalDate được chuyển thành String trong JSON
     val categoryType: String, // "INCOME" hoặc "EXPENSE"
-    val userName: String
+    val userName: String,
+    val description: String? = null // Thêm description field, nullable vì có thể API cũ không trả về
 )

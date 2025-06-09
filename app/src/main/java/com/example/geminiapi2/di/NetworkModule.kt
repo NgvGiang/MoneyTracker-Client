@@ -12,6 +12,7 @@ import okhttp3.Interceptor
 import okhttp3.OkHttpClient
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
+import java.util.Locale
 import java.util.concurrent.TimeUnit
 import javax.inject.Singleton
 
@@ -21,7 +22,8 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    fun provideBaseUrl(): String = "http://10.0.2.2:8081/"
+//    fun provideBaseUrl(): String = "http://10.0.2.2:8081/"
+    fun provideBaseUrl(): String = "http://26.222.225.242:8081/"
 
     @Provides
     @Singleton
@@ -34,14 +36,17 @@ object NetworkModule {
     fun provideAuthInterceptor(tokenManager: TokenManager): Interceptor {
         return Interceptor { chain ->
             val token = tokenManager.getTokenSync()
+            val locale = Locale.getDefault().language
             val request = if (token.isNotEmpty()) {
                 chain.request().newBuilder()
                     .addHeader("Content-Type", "application/json")
                     .addHeader("Authorization", "Bearer $token")
+                    .addHeader("Accept-Language", locale)
                     .build()
             } else {
                 chain.request().newBuilder()
                     .addHeader("Content-Type", "application/json")
+                    .addHeader("Accept-Language", locale)
                     .build()
             }
             chain.proceed(request)

@@ -2,10 +2,10 @@ package com.example.geminiapi2.features.login
 
 import android.util.Log
 import com.example.geminiapi2.data.ApiService
+import com.example.geminiapi2.data.dto.ApiErrorParser
 import com.example.geminiapi2.data.dto.AuthResponse
 import com.example.geminiapi2.data.dto.LoginRequest
 import com.example.geminiapi2.data.dto.RegisterRequest
-import com.google.gson.Gson
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -18,18 +18,19 @@ class AuthRepository @Inject constructor(
         return try {
             val response = apiService.login(LoginRequest(username, password))
             if (response.isSuccessful) {
-                response.body()?.let {
-                    tokenManager.saveToken(it.data.accessToken)
-                    Result.success(it)
+                response.body()?.let { authResponse ->
+                    if (authResponse.code == "Success" && authResponse.data != null) {
+                        tokenManager.saveToken(authResponse.data.accessToken)
+                        Result.success(authResponse)
+                    } else {
+                        Result.failure(Exception(authResponse.message))
+                    }
                 } ?: Result.failure(Exception("Empty response body"))
             } else {
                 val errorBody = response.errorBody()?.string()
-                val errorMessage = errorBody?.let {
-                    Gson().fromJson(it, AuthResponse::class.java).message
-                } ?: "Login failed"
+                val errorMessage = ApiErrorParser.parseErrorMessage(errorBody, "Login failed")
 
-                Log.e("A", response.message())
-//                Result.failure(Exception("Login failed: ${response.message()}"))
+                Log.e("AuthRepository", "Login error: $errorMessage")
                 Result.failure(Exception(errorMessage))
             }
         } catch (e: Exception) {
@@ -47,18 +48,19 @@ class AuthRepository @Inject constructor(
             val response =
                 apiService.register(RegisterRequest(username, email, password))
             if (response.isSuccessful) {
-                response.body()?.let {
-                    tokenManager.saveToken(it.data.accessToken)
-                    Result.success(it)
+                response.body()?.let { authResponse ->
+                    if (authResponse.code == "Success" && authResponse.data != null) {
+                        tokenManager.saveToken(authResponse.data.accessToken)
+                        Result.success(authResponse)
+                    } else {
+                        Result.failure(Exception(authResponse.message))
+                    }
                 } ?: Result.failure(Exception("Empty response body"))
             } else {
                 val errorBody = response.errorBody()?.string()
-                val errorMessage = errorBody?.let {
-                    Gson().fromJson(it, AuthResponse::class.java).message
-                } ?: "Register failed"
+                val errorMessage = ApiErrorParser.parseErrorMessage(errorBody, "Register failed")
 
-                Log.e("A", response.message())
-//                Result.failure(Exception("Login failed: ${response.message()}"))
+                Log.e("AuthRepository", "Register error: $errorMessage")
                 Result.failure(Exception(errorMessage))
             }
 

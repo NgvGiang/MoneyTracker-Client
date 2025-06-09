@@ -27,6 +27,23 @@ class ChatBotViewModel @Inject constructor(
 
     private val _sendStatus = MutableStateFlow<AddTransactionState>(AddTransactionState.Idle)
     val sendStatus: StateFlow<AddTransactionState> = _sendStatus.asStateFlow()
+    
+    init {
+        // Listen to token changes to reset state when user logs out
+        viewModelScope.launch {
+            tokenManager.getTokenFlow().collect { token ->
+                if (token.isNullOrEmpty()) {
+                    resetState()
+                }
+            }
+        }
+    }
+    
+    private fun resetState() {
+        _messages.value = emptyList()
+        _sendStatus.value = AddTransactionState.Idle
+    }
+
     fun sendAddTransactionMessage(prompt: String, walletId: Int ){
         _messages.update { currentMessages->
             currentMessages.toMutableList().apply {
@@ -83,7 +100,7 @@ class ChatBotViewModel @Inject constructor(
                 date = response.date,
                 amount = response.amount,
                 categoryType = response.categoryType,
-                comment = response.comment
+                description = response.comment
             )
             _messages.update { currentMessages ->
                 currentMessages.toMutableList().apply {

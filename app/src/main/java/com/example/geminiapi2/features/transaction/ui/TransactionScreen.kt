@@ -37,7 +37,7 @@ import com.example.geminiapi2.data.dto.WalletResponse
 import com.example.geminiapi2.features.navigation.Screen
 import com.example.geminiapi2.features.transaction.viewmodel.TransactionUiState
 import com.example.geminiapi2.features.transaction.viewmodel.TransactionViewModel
-import com.example.geminiapi2.ui.theme.primaryLightFigma
+import com.example.geminiapi2.features.transaction.ui.ExpandableFab
 import java.text.NumberFormat
 import java.time.LocalDate
 import java.time.Month
@@ -73,27 +73,28 @@ fun TransactionScreen(
 
     // Show snackbar if join wallet result is available
     LaunchedEffect(joinWalletResult) {
-        joinWalletResult?.let {
-            when (it) {
+        joinWalletResult?.let { result ->
+            when (result) {
                 is TransactionViewModel.JoinWalletResult.Success -> {
                     scope.launch {
                         snackbarHostState.showSnackbar("Your request has been sent")
-                        viewModel.clearJoinWalletResult()
                     }
                 }
                 is TransactionViewModel.JoinWalletResult.Error -> {
                     scope.launch {
-                        snackbarHostState.showSnackbar("Error: ${it.message}")
-                        viewModel.clearJoinWalletResult()
+                        snackbarHostState.showSnackbar("Error: ${result.message}")
                     }
                 }
             }
+            viewModel.clearJoinWalletResult()
         }
     }
 
-    // Refresh data when screen is displayed
+    // Refresh data when screen is displayed - chỉ gọi 1 lần
     LaunchedEffect(Unit) {
-        viewModel.refresh()
+        if (wallets.isEmpty()) {
+            viewModel.refresh()
+        }
     }
 
     if (showCreateWalletDialog) {
@@ -130,7 +131,13 @@ fun TransactionScreen(
         topBar = {
             Surface(
                 modifier = Modifier.fillMaxWidth(),
-                color = primaryLightFigma
+                color = MaterialTheme.colorScheme.surfaceVariant,
+                shape = RoundedCornerShape(
+                    topStart = 0.dp,
+                    topEnd = 0.dp,
+                    bottomStart = 24.dp,
+                    bottomEnd = 24.dp
+                )
             ) {
                 Column(
                     modifier = Modifier
@@ -147,7 +154,7 @@ fun TransactionScreen(
                             style = MaterialTheme.typography.titleLarge.copy(
                                 fontWeight = FontWeight.SemiBold,
                                 fontSize = 20.sp,
-                                color = Color.White
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         )
                         Row(
@@ -157,21 +164,21 @@ fun TransactionScreen(
                                 Icon(
                                     imageVector = Icons.Default.Notifications,
                                     contentDescription = "Wallet Requests",
-                                    tint = Color.White
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
                             IconButton(onClick = { showJoinWalletDialog = true }) {
                                 Icon(
                                     imageVector = Icons.Default.GroupAdd,
                                     contentDescription = "Join Wallet",
-                                    tint = Color.White
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
                             IconButton(onClick = { showMonthYearPicker = true }) {
                                 Icon(
                                     imageVector = Icons.Default.CalendarMonth,
                                     contentDescription = "Calendar",
-                                    tint = Color.White
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
                         }
@@ -215,7 +222,7 @@ fun TransactionScreen(
                                     Icon(
                                         imageVector = Icons.Default.Add,
                                         contentDescription = "Add Wallet",
-                                        tint = Color(0xFF2F51FF),
+                                        tint = MaterialTheme.colorScheme.primary,
                                         modifier = Modifier.size(32.dp)
                                     )
                                 }
@@ -225,6 +232,13 @@ fun TransactionScreen(
                 }
             }
         },
+        floatingActionButton = {
+            ExpandableFab(
+                onAiAssistantClick = { navController.navigate(Screen.ChatBotAdd.route) },
+                onManualAddClick = { navController.navigate(Screen.ManualAdd.route) }
+            )
+        },
+        floatingActionButtonPosition = FabPosition.End,
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
     ) { paddingValues ->
         Column(
@@ -238,10 +252,10 @@ fun TransactionScreen(
                     .padding(horizontal = 16.dp, vertical = 8.dp)
                     .height(40.dp),
                 colors = CardDefaults.cardColors(
-                    containerColor = Color(0xFFF3F4F5)
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant
                 ),
                 shape = RoundedCornerShape(20.dp),
-                border = BorderStroke(1.dp, Color.Black.copy(alpha = 0.1f))
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
             ) {
                 Row(
                     modifier = Modifier
@@ -254,7 +268,7 @@ fun TransactionScreen(
                             .fillMaxHeight()
                             .background(
                                 color = if (selectedCategoryType == "EXPENSE") 
-                                    Color(0xFFE25C5C) 
+                                    MaterialTheme.colorScheme.error 
                                 else Color.Transparent,
                                 shape = RoundedCornerShape(18.dp)
                             )
@@ -266,8 +280,8 @@ fun TransactionScreen(
                             style = MaterialTheme.typography.bodySmall.copy(
                                 fontWeight = FontWeight.Medium,
                                 color = if (selectedCategoryType == "EXPENSE") 
-                                    Color.White 
-                                else Color.Gray
+                                    MaterialTheme.colorScheme.onError 
+                                else MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         )
                     }
@@ -291,7 +305,7 @@ fun TransactionScreen(
                                 fontWeight = FontWeight.Medium,
                                 color = if (selectedCategoryType == "INCOME") 
                                     Color.White 
-                                else Color.Gray
+                                else MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         )
                     }
@@ -376,7 +390,7 @@ fun MonthYearPickerDialog(
                     text = "Select Date",
                     style = MaterialTheme.typography.titleLarge.copy(
                         fontWeight = FontWeight.SemiBold,
-                        color = Color(0xFF212121)
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                 )
                 
@@ -394,12 +408,12 @@ fun MonthYearPickerDialog(
                         onClick = { selectedYear-- },
                         modifier = Modifier
                             .size(40.dp)
-                            .background(Color(0xFFF3F4F5), CircleShape)
+                            .background(MaterialTheme.colorScheme.surfaceVariant, CircleShape)
                     ) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
                             contentDescription = "Previous Year",
-                            tint = Color(0xFF212121)
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                     
@@ -407,7 +421,7 @@ fun MonthYearPickerDialog(
                         text = "$selectedYear",
                         style = MaterialTheme.typography.titleLarge.copy(
                             fontWeight = FontWeight.SemiBold,
-                            color = Color(0xFF212121)
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                     )
                     
@@ -415,12 +429,12 @@ fun MonthYearPickerDialog(
                         onClick = { selectedYear++ },
                         modifier = Modifier
                             .size(40.dp)
-                            .background(Color(0xFFF3F4F5), CircleShape)
+                            .background(MaterialTheme.colorScheme.surfaceVariant, CircleShape)
                     ) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
                             contentDescription = "Next Year",
-                            tint = Color(0xFF212121)
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
@@ -441,8 +455,8 @@ fun MonthYearPickerDialog(
                                 .size(72.dp)
                                 .clip(RoundedCornerShape(16.dp))
                                 .background(
-                                    if (isSelected) Color(0xFF2F51FF)
-                                    else Color(0xFFF3F4F5)
+                                    if (isSelected) MaterialTheme.colorScheme.primary
+                                    else MaterialTheme.colorScheme.surfaceVariant
                                 )
                                 .clickable { selectedMonth = month.value },
                             contentAlignment = Alignment.Center
@@ -451,7 +465,7 @@ fun MonthYearPickerDialog(
                                 text = month.toString().take(3),
                                 style = MaterialTheme.typography.bodyLarge.copy(
                                     fontWeight = FontWeight.Medium,
-                                    color = if (isSelected) Color.White else Color(0xFF212121)
+                                    color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             )
                         }
@@ -470,9 +484,9 @@ fun MonthYearPickerDialog(
                         modifier = Modifier.weight(1f),
                         shape = RoundedCornerShape(16.dp),
                         colors = ButtonDefaults.outlinedButtonColors(
-                            contentColor = Color(0xFF2F51FF)
+                            contentColor = MaterialTheme.colorScheme.primary
                         ),
-                        border = BorderStroke(1.dp, Color(0xFF2F51FF))
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary)
                     ) {
                         Text(
                             text = "Cancel",
@@ -487,14 +501,14 @@ fun MonthYearPickerDialog(
                         modifier = Modifier.weight(1f),
                         shape = RoundedCornerShape(16.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFF2F51FF)
+                            containerColor = MaterialTheme.colorScheme.primary
                         )
                     ) {
                         Text(
                             text = "Select",
                             style = MaterialTheme.typography.bodyLarge.copy(
                                 fontWeight = FontWeight.Medium,
-                                color = Color.White
+                                color = MaterialTheme.colorScheme.onPrimary
                             )
                         )
                     }
@@ -565,52 +579,98 @@ fun TransactionContent(
                     // Transaction Item Card
                     Card(
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(8.dp),
+                        shape = RoundedCornerShape(16.dp),
                         colors = CardDefaults.cardColors(
-                            containerColor = Color(0xFFF3F4F5) // Màu nền xám nhạt
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant
                         ),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                     ) {
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(12.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
+                                .padding(horizontal = 16.dp, vertical = 12.dp),
+                            horizontalArrangement = Arrangement.spacedBy(16.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Spacer(modifier = Modifier.width(10.dp))
-                                Column {
-                                    Text(
-                                        text = transaction.category,
-                                        style = MaterialTheme.typography.bodyLarge,
-                                        fontWeight = FontWeight.Medium
+                            // Icon tròn bên trái (48x48dp)
+                            Box(
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .background(
+                                        MaterialTheme.colorScheme.surface,
+                                        shape = androidx.compose.foundation.shape.CircleShape
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                // Hiển thị emoji hoặc chữ cái đầu
+                                Text(
+                                    text = extractEmojiOrFirstChar(transaction.category),
+                                    style = MaterialTheme.typography.titleMedium.copy(
+                                        fontWeight = FontWeight.Medium,
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                        fontSize = 20.sp
                                     )
-                                    Spacer(modifier = Modifier.height(4.dp)) // Khoảng cách giữa Category và Date
+                                )
+                            }
+                            
+                            // Phần giữa - Transaction info
+                            Column(
+                                modifier = Modifier.weight(1f),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
                                     Text(
-                                        text = formattedDate, // Hiển thị ngày đã format
-                                        style = MaterialTheme.typography.bodySmall.copy( // Style nhỏ hơn, màu xám
-                                            color = Color(0xFF707070), // Màu xám từ Figma
-                                            fontSize = 11.sp // Cỡ chữ từ Figma
-                                        )
+                                        text = removePrefixEmoji(transaction.category),
+                                    style = MaterialTheme.typography.bodyLarge.copy(
+                                        fontWeight = FontWeight.Medium,
+                                        fontSize = 16.sp,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                )
+                                
+                                // Hiển thị description nếu có
+                                if (!transaction.description.isNullOrBlank()) {
+                                    Text(
+                                        text = transaction.description,
+                                        style = MaterialTheme.typography.bodyMedium.copy(
+                                            fontWeight = FontWeight.Normal,
+                                            fontSize = 14.sp,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                                        ),
+                                        maxLines = 1
                                     )
                                 }
                             }
                             
-                            // Amount with appropriate color based on category type
+                            // Phần bên phải - Amount và Date
+                            Column(
+                                horizontalAlignment = Alignment.End,
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                // Amount với màu phù hợp
                             val amountColor = if (transaction.categoryType.equals("INCOME", ignoreCase = true)) {
                                 Color(0xFF53D258)
                             } else {
-                                Color(0xFFE25C5C)
+                                    Color(0xFF904A42) // Màu từ Figma
                             }
                             
                             Text(
                                 text = formatAmount(transaction.amount),
                                 style = MaterialTheme.typography.bodyLarge.copy(
                                     fontWeight = FontWeight.Medium,
+                                        fontSize = 16.sp,
                                     color = amountColor
                                 )
                             )
+                                
+                                Text(
+                                    text = formattedDate,
+                                    style = MaterialTheme.typography.bodyMedium.copy(
+                                        fontWeight = FontWeight.Normal,
+                                        fontSize = 14.sp,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                )
+                            }
                         }
                     }
                 }
@@ -644,16 +704,23 @@ fun WalletCard(
     onSelect: () -> Unit,
     navController: NavController
 ) {
+    // Gradient colors cho các cards khác nhau
+    val gradientColors = when (wallet.id % 3) {
+        0 -> listOf(Color(0xFFCCDFF1), Color(0xFFEDDEF3)) // Blue to Purple
+        1 -> listOf(Color(0xFFE8F5E4), Color(0xFFC4E6DE)) // Green gradient
+        else -> listOf(Color(0xFFCCE1EC), Color(0xFFCFEAF2)) // Light blue gradient
+    }
+    
     Card(
         modifier = Modifier
-            .width(130.dp)
-            .height(90.dp)
+            .width(155.dp)
+            .height(97.dp)
             .clickable(onClick = onSelect),
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(14.dp),
         colors = CardDefaults.cardColors(containerColor = Color.Transparent),
         elevation = CardDefaults.cardElevation(
-            defaultElevation = 8.dp,
-            pressedElevation = 4.dp
+            defaultElevation = 4.dp,
+            pressedElevation = 2.dp
         )
     ) {
         Box(
@@ -662,31 +729,20 @@ fun WalletCard(
                 .background(
                     brush = Brush.linearGradient(
                         colors = if (isSelected) {
-                            listOf(Color(0xFF2F51FF), Color(0xFF0E33F3))
+                            listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.primary.copy(alpha = 0.8f))
                         } else {
-                            listOf(MaterialTheme.colorScheme.surface, MaterialTheme.colorScheme.surface)
+                            gradientColors
                         }
-                    )
+                    ),
+                    shape = RoundedCornerShape(14.dp)
                 )
-                .padding(16.dp)
+                .padding(12.dp)
         ) {
-            // Icon Edit ở góc trên bên phải
-            IconButton(
-                onClick = { navController.navigate(Screen.WalletDetail.createRoute(wallet.id)) },
-                modifier = Modifier.align(Alignment.TopEnd).size(24.dp).padding(0.dp) // Căn chỉnh và kích thước
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Edit,
-                    contentDescription = "Edit Wallet",
-                    tint = if (isSelected) Color.White.copy(alpha = 0.7f) else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-                    modifier = Modifier.size(14.dp) // Kích thước icon nhỏ hơn
-                )
-            }
-            
             Column(
                 modifier = Modifier.fillMaxSize(),
                 verticalArrangement = Arrangement.SpaceBetween
             ) {
+                // Wallet name
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -695,40 +751,78 @@ fun WalletCard(
                     Text(
                         text = wallet.walletName,
                         style = MaterialTheme.typography.bodySmall.copy(
-                            fontFamily = FontFamily.Default,
                             fontSize = 12.sp,
-                            letterSpacing = 0.02.em,
-                            color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurface
+                            fontWeight = FontWeight.Normal,
+                            color = if (isSelected) 
+                                MaterialTheme.colorScheme.onPrimary 
+                            else 
+                                MaterialTheme.colorScheme.onSurface
                         ),
                         maxLines = 1,
-                        modifier = Modifier.weight(1f, fill = false) // Để Text không chiếm hết không gian khi có Icon
+                        modifier = Modifier.weight(1f, fill = false)
                     )
                 }
                 
+                // Total Balance section
                 Column {
                     Text(
                         text = "Total Balance",
                         style = MaterialTheme.typography.bodySmall.copy(
-                            fontFamily = FontFamily.Default,
                             fontSize = 12.sp,
-                            letterSpacing = 0.02.em,
-                            color = (if (isSelected) Color.White else MaterialTheme.colorScheme.onSurface).copy(alpha = 0.7f)
+                            fontWeight = FontWeight.Normal,
+                            color = if (isSelected) 
+                                MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f)
+                            else 
+                                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                         )
                     )
                     
                     Text(
                         text = formatAmount(wallet.currentBalance),
                         style = MaterialTheme.typography.bodyMedium.copy(
-                            fontFamily = FontFamily.Default,
                             fontWeight = FontWeight.SemiBold,
                             fontSize = 18.sp,
-                            letterSpacing = 0.02.em,
-                            color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurface
+                            color = if (isSelected) 
+                                MaterialTheme.colorScheme.onPrimary 
+                            else 
+                                MaterialTheme.colorScheme.onSurface
                         ),
                         maxLines = 1
                     )
                 }
             }
+            
+            // Menu button (ba chấm) ở góc dưới phải
+            IconButton(
+                onClick = { navController.navigate(Screen.WalletDetail.createRoute(wallet.id)) },
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .size(20.dp)
+                    .offset(x = 4.dp, y = 4.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.MoreVert,
+                    contentDescription = "Menu",
+                    tint = if (isSelected) 
+                        MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f) 
+                    else 
+                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
+                    modifier = Modifier.size(14.dp)
+                )
+            }
         }
     }
+}
+
+private fun extractEmojiOrFirstChar(category: String): String {
+    // Tìm emoji đầu tiên trong tên category
+    val emojiRegex = Regex("[\\p{So}\\p{Cn}]")
+    val emoji = emojiRegex.find(category)?.value
+    return emoji ?: category.firstOrNull()?.toString()?.uppercase() ?: "C"
+}
+
+private fun removePrefixEmoji(category: String): String {
+    // Loại bỏ emoji khỏi tên category khi hiển thị
+    val emojiRegex = Regex("[\\p{So}\\p{Cn}]")
+    return emojiRegex.replace(category, "").trim()
 }

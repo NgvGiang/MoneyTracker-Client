@@ -1,7 +1,6 @@
 package com.example.geminiapi2.features.settings
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -15,7 +14,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Divider
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -31,10 +30,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -42,8 +38,8 @@ import com.example.geminiapi2.R
 
 @Composable
 fun SettingsScreen(
-    viewModel: SettingsViewModel = hiltViewModel(),
-    onNavigateToLogin: () -> Unit
+    onNavigateToLogin: () -> Unit,
+    viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -100,7 +96,8 @@ fun SettingsContent(
                 Text(
                     text = "Settings",
                     style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onBackground
                 )
             }
         }
@@ -109,13 +106,13 @@ fun SettingsContent(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .background(Color(0xFFEEEEEE))
+                .background(MaterialTheme.colorScheme.surfaceVariant)
         ) {
             if (uiState is SettingsUiState.Success) {
                 // User Profile
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
-                    color = MaterialTheme.colorScheme.background
+                    color = MaterialTheme.colorScheme.surface
                 ) {
                     Row(
                         modifier = Modifier
@@ -128,13 +125,13 @@ fun SettingsContent(
                             modifier = Modifier
                                 .size(48.dp)
                                 .clip(CircleShape)
-                                .background(Color(0xFFE0E0E0)),
+                                .background(MaterialTheme.colorScheme.surfaceVariant),
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
                                 text = uiState.userName.firstOrNull()?.toString() ?: "U",
                                 style = MaterialTheme.typography.titleLarge,
-                                color = Color(0xFF424242)
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
 
@@ -146,12 +143,12 @@ fun SettingsContent(
                             Text(
                                 text = uiState.userName,
                                 style = MaterialTheme.typography.titleMedium,
-                                color = Color(0xFF212121)
+                                color = MaterialTheme.colorScheme.onSurface
                             )
                             Text(
                                 text = uiState.userEmail,
                                 style = MaterialTheme.typography.bodyMedium,
-                                color = Color(0xFF424242)
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
@@ -162,7 +159,7 @@ fun SettingsContent(
                 // Settings Items
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
-                    color = MaterialTheme.colorScheme.background
+                    color = MaterialTheme.colorScheme.surface
                 ) {
                     Column {
                         SettingsItem(
@@ -170,31 +167,31 @@ fun SettingsContent(
                             title = "Manage categories",
                             onClick = { /* TODO: Navigate to categories management */ }
                         )
-                        Divider()
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
                         SettingsItem(
                             icon = R.drawable.export_to_pdf_icon,
                             title = "Export to PDF",
                             onClick = { /* TODO: Export functionality */ }
                         )
-                        Divider()
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
                         SettingsItem(
                             icon = R.drawable.currency_icon,
                             title = "Choose currency",
                             onClick = { /* TODO: Currency settings */ }
                         )
-                        Divider()
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
                         SettingsItem(
                             icon = R.drawable.language_icon,
                             title = "Choose language",
                             onClick = { /* TODO: Language settings */ }
                         )
-                        Divider()
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
                         SettingsItem(
                             icon = R.drawable.faq_icon,
                             title = "Frequently asked questions",
                             onClick = { /* TODO: FAQ screen */ }
                         )
-                        Divider()
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
                         SettingsItem(
                             icon = R.drawable.logout_icon,
                             title = "Logout",
@@ -217,13 +214,13 @@ fun SettingsItem(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 12.dp)
-            .background(MaterialTheme.colorScheme.background),
+            .background(MaterialTheme.colorScheme.surface),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
             painter = painterResource(id = icon),
             contentDescription = title,
-            tint = Color(0xFF616161),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.size(24.dp)
         )
         
@@ -233,13 +230,13 @@ fun SettingsItem(
             modifier = Modifier
                 .padding(start = 8.dp)
                 .weight(1f),
-            color = Color(0xFF212121)
+            color = MaterialTheme.colorScheme.onSurface
         )
         
         Icon(
             imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
             contentDescription = "Navigate",
-            tint = Color(0xFFBDBDBD)
+            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
         )
     }
-} 
+}

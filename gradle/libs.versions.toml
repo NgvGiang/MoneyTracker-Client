@@ -3,6 +3,7 @@ accompanistPermissions = "0.32.0"
 agp = "8.6.1"
 annotations = "23.0.0"
 coilCompose = "2.4.0"
+composeCharts = "0.0.13"
 converterGson = "2.9.0"
 datastorePreferences = "1.1.2"
 firebaseBom = "33.11.0"
@@ -11,6 +12,7 @@ googleServicesVersion = "4.3.10"
 hiltAndroid = "2.55"
 hiltAndroidVersion = "2.55"
 hiltNavigationCompose = "1.2.0"
+hiltNavigationComposeVersion = "1.1.0"
 json = "20231013"
 kotlin = "2.1.0"
 coreKtx = "1.15.0"
@@ -42,9 +44,11 @@ androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = 
 androidx-datastore-preferences = { module = "androidx.datastore:datastore-preferences", version.ref = "datastorePreferences" }
 androidx-hilt-compiler = { module = "androidx.hilt:hilt-compiler", version.ref = "hiltNavigationCompose" }
 androidx-hilt-navigation-compose = { module = "androidx.hilt:hilt-navigation-compose", version.ref = "hiltNavigationCompose" }
+androidx-hilt-navigation-compose-v110 = { module = "androidx.hilt:hilt-navigation-compose", version.ref = "hiltNavigationComposeVersion" }
 androidx-material-icons-extended = { module = "androidx.compose.material:material-icons-extended", version.ref = "materialIconsExtended" }
 annotations = { module = "org.jetbrains:annotations", version.ref = "annotations" }
 coil-compose = { module = "io.coil-kt:coil-compose", version.ref = "coilCompose" }
+compose-charts = { module = "io.github.ehsannarmani:compose-charts", version.ref = "composeCharts" }
 converter-gson = { module = "com.squareup.retrofit2:converter-gson", version.ref = "converterGson" }
 firebase-analytics = { module = "com.google.firebase:firebase-analytics" }
 firebase-bom = { module = "com.google.firebase:firebase-bom", version.ref = "firebaseBom" }
